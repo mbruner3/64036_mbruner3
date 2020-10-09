@@ -1,0 +1,58 @@
+---
+title: "Descriptive Statistics Practice"
+author: "Mark Bruner"
+date: "9/29/2020"
+output: html_document
+---
+
+```{r}
+rm(list = ls())
+```
+
+```{r}
+load("/Users/markbruner/Google Drive/MSBA/Business Analytics/64036_mbruner3/Financial.rda")
+```
+
+```{r}
+library(summarytools)
+head(Financial)
+variable.names(Financial)
+colnames(Financial)
+descr(Financial$rev)
+
+
+mean(Financial[, 5])
+
+max(Financial$rev)
+
+which.max(Financial$rev)
+Financial[31, ]
+
+Financial[which.min(Financial$roe), ]
+
+order(Financial$assets, decreasing = TRUE)
+
+Financial[c(87, 29, 17, 31, 3), ]
+
+mean <- mean(Financial$roe)
+sqrt(sum(((Financial$roe-mean)^2))/99)
+sd(Financial$roe)
+```
+
+```{r}
+sd(Financial$roe)
+summary(Financial)
+```
+
+```{r}
+library(modeest)
+skewness(Financial$rev)
+skewness(Financial$assets)
+
+library(ggplot2)
+library(corrplot)
+newdata <- Financial[, c(-3:-5)]
+newdata2 <- Financial[, c(-5:-3)]
+
+```
+

@@ -1,0 +1,33 @@
+---
+title: "mbruner3_Assign1"
+author: "Mark Bruner"
+date: "10/9/2020"
+output: html_document
+---
+```{r}
+rm(list = ls())
+```
+
+```{r}
+library(tidyverse)
+Online_Retail <- read_csv("Online_Retail.csv")
+head(Online_Retail)
+```
+# NUMBER 1
+```{r}
+Online_Retail %>%
+count(Country, sort = TRUE) %>% summarise(Country, Counts = n, Percent = n/sum(n)*100) %>% head(4)
+
+```
+#NUMBER 2
+```{r}
+transaction_value <- as.data.frame(Online_Retail$Quantity*Online_Retail$UnitPrice)
+Online_Retail <- cbind(Online_Retail, transaction_value) 
+Online_Retail <- rename(Online_Retail, "Transaction Value" = `Online_Retail$Quantity * Online_Retail$UnitPrice`)
+```
+# NUMBER 3
+```{r}
+Online_Retail %>%
+count(Country, `Transaction Value`, sort = TRUE) %>% summarise(Country, `Transaction Value` *n)
+```
+
