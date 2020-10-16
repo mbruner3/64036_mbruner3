@@ -4,6 +4,7 @@ author: "Mark Bruner"
 date: "10/9/2020"
 output:
   html_document: default
+  word_document: default
   pdf_document: default
 ---
 ```{r}
@@ -21,12 +22,12 @@ Online_Retail %>%
 group_by(Country)  %>%
   tally(sort = TRUE) %>% summarise(Country, Counts = n, Percent = n/sum(n)*100) %>% filter(Percent > 1)
 ```
-UK, Germany, France, and EIRE account for more than 1% of the total transactions in this dataset.
+**UK, Germany, France, and EIRE account for more than 1% of the total transactions in this dataset.**
 
-#NUMBER 2
+# NUMBER 2
 ```{r}
 Online_Retail <- mutate(Online_Retail, TransactionValue = Quantity * UnitPrice)
-head(Online_Retail)
+head(Online_Retail[, 9])
 ```
 # NUMBER 3
 ```{r}
@@ -34,7 +35,7 @@ Online_Retail %>%
 group_by(Country) %>% 
   summarise(TransValueSum = sum(TransactionValue)) %>% filter(TransValueSum > 130000) %>% arrange(desc(TransValueSum))
 ```
-UK, Netherlands, EIRE, Germany, France, and Australia are the countries where their sum is greater than 130,000 British Pound.
+**UK, Netherlands, EIRE, Germany, France, and Australia are the countries where their sum is greater than 130,000 British Pound.**
 
 # Number 4 Intro
 ```{r}
@@ -48,7 +49,7 @@ Online_Retail$New_Invoice_Month <- as.numeric(format(Temp, "%m"))
 head(Online_Retail)
 ```
 
-Part a
+### **Part a**
 ```{r}
 Online_Retail %>%  
   group_by(Invoice_Day_Week) %>% 
@@ -56,7 +57,7 @@ Online_Retail %>%
   summarise(Invoice_Day_Week, TransactionCounts = n, Percent = n/sum(n)*100) %>% 
   arrange(desc(TransactionCounts))
 ```
-Part b
+### **Part b**
 ```{r}
 Online_Retail %>% 
   group_by(Invoice_Day_Week) %>% 
@@ -64,7 +65,8 @@ Online_Retail %>%
   mutate(TransValuePercent = TransValueSum/sum(TransValueSum)) %>% 
   arrange(desc(TransValueSum))
 ```
-Part c
+
+### **Part c**
 ```{r}
 Online_Retail %>%
   group_by(New_Invoice_Month) %>% 
@@ -72,7 +74,7 @@ Online_Retail %>%
   mutate(TransValuePercent = TransValueSum/sum(TransValueSum)) %>% 
   arrange(desc(TransValuePercent))
 ```
-Part d
+### **Part d**
 ```{r}
 Online_Retail %>% 
   filter(Country == "Australia") %>% 
@@ -80,17 +82,18 @@ Online_Retail %>%
   tally(sort = TRUE) %>% 
   filter(n == max(n))
 ```
-Part e
+### **Part e**
 ```{r}
 Online_Retail %>% 
   group_by(New_Invoice_Hour) %>% 
   tally(sort = TRUE) %>% 
   filter(New_Invoice_Hour>= 7 & New_Invoice_Hour<=20) %>% 
   arrange(n) %>% 
-  head(3)
+  head(5)
 ```
-The answer is the 19th and 20th since they are the 2nd and 3rd lowest values and then combined would be the lowest sum of two consecutive hours.
+**The answer is the 19th and 20th since they are the 2nd and 3rd lowest values and then combined would be the lowest sum of two consecutive hours.**
 
+# Number 5
 ```{r}
 Online_Retail %>%
   group_by(Country) %>%
@@ -110,12 +113,20 @@ Online_Retail %>%
   filter(!is.na(CustomerID)) %>% 
   filter(n==max(n))
 
+Online_Retail %>%
+  group_by(CustomerID) %>% 
+  summarise(Transvaluesum = sum(TransactionValue)) %>% 
+  filter(!is.na(CustomerID)) %>% 
+  filter(Transvaluesum == max(Transvaluesum))
+  
 ```
+**Customer 17841 has the most transactions of 7,983 and customer 14646 is the most valuable spending 279,489 British Pound.**
 
 # Number 7
 ```{r}
 colMeans(is.na(Online_Retail))
 ```
+**Only columns "Description" (.2% missing values) and "CustomerID" (24.9% missing values) have missing values.**
 
 # Number 8
 ```{r}
@@ -135,11 +146,11 @@ Online_Retail %>% # Creating a variable for the number of days between visits.
   mutate(DaysBetween = New_Invoice_Date - lag(New_Invoice_Date))-> CustDaysBtwVisit #Combined DaysBetween per CustomerID.  
  
 CustDaysBtwVisit %>% 
-   filter(!is.na(DaysBetween)) -> RetCustDaysBtwVisits # Separated "NA" from dataset.
+   filter(!is.na(DaysBetween)) -> RetCustDaysBtwVisits # Filtered "NA" from dataset.
 
 mean(RetCustDaysBtwVisits$DaysBetween)
 ```
-  The customers who did return had an average of 38.5 days between visits.
+**The customers who did return had an average of 38.5 days between visits.**
 
 # Number 10
 ```{r}
@@ -160,7 +171,7 @@ FRTransactions <- sum(FrenchPurchases$Quantity) # calculated the quanity of purc
 
 FRReturns/FRTransactions *100 # Using the above two numbers, I then calculated the return rate.
 ```
-France has a 1.45% return rate.
+**France has a 1.45% return rate.**
 
 # Number 11
 ```{r}
@@ -178,6 +189,8 @@ Online_Retail %>%
   distinct(StockCode, Description) %>% 
   filter(Description == "REGENCY CAKESTAND 3 TIER")
 ```
+**Regency 3 tiered cakestand had the highest revenue.**
+
 # Number 12
 ```{r}
 Online_Retail %>% 
@@ -186,6 +199,6 @@ Online_Retail %>%
 
   length(UniqueCustomers$CustomerID)
 ```
-There are 4373 unique customers in this dataset.
+**There are 4373 unique customers in this dataset.**
 
   
