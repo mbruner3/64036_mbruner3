@@ -1,0 +1,200 @@
+---
+title: "mbruner3_assign2"
+author: "Mark Bruner"
+date: "10/27/2020"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+```{r}
+rm(list=ls())
+```
+
+```{r}
+library(tidyverse)
+library(colorspace)
+```
+
+## **QUESTION 1**
+
+### **part a**
+```{r}
+set.seed(2017)
+X=runif(100)*10
+Y=X*4+3.45
+Y=rnorm(100)*0.29*Y+Y
+
+X <- as.data.frame(X)
+Y <- as.data.frame(Y)
+table <- cbind(X, Y)
+
+table %>% 
+ggplot(mapping = aes(x = X, y = Y)) +
+  geom_point(colour = "firebrick3") +
+  labs(title = "Scatter Plot of X & Y")
+```
+
+Yes we will be able to fit a linear model to this data. The reason is, in general, as x increases so does y. Therefore, that implies that there is a relationship between x and y making it possible to create a linear mapping function that fits the data.  
+
+### **part b**
+```{r}
+lin_reg <- lm(Y~ X, table)
+lin_reg
+```
+
+The model equation that explains y to x: **y = 3.611x + 4.465**. **For accuracy of the model see part c.**
+
+## **part c:** **note**: includes accuracy from part b
+```{r}
+summary(lin_reg)
+```
+
+The r^2 is 65%, meaning that 65% of the variability of Y is captured by it captured by X.
+
+
+## EXTRA INVESTIGATIONS/EXPLORATION
+I decided to use some of the concepts in class to further explore and practice. You can skip the next couple of graphs as they do not pertain to this assignment.
+
+```{r}
+lin_reg %>% 
+ggplot(mapping = aes(x = lin_reg$residuals)) +
+  geom_histogram(colour = "lightsteelblue4", fill = "lightsteelblue", binwidth = 2) +
+  labs(title = "Histogram of the Linear Regression Residuals") +
+  xlab("Residuals") +
+  theme(plot.title = element_text(face = "bold", hjust = .5))
+```
+
+The above graph shows a fairly normal residual distribution with maybe a couple of outliers. 
+
+```{r}
+table %>% 
+ggplot(mapping = aes(x = X, y = Y), ) +
+  geom_point(colour = "dodgerblue") +
+   stat_smooth(method = "lm", colour = "firebrick2", se = FALSE) +
+  labs(title = "Scatter Plot and Linear Regression Line", subtitle = "Linear Regression Model Equation: y = 3.611x + 4.465") +
+  theme(plot.title = element_text(face = "bold", hjust = .5), plot.subtitle = element_text(face = "italic", hjust = .5))
+  
+```
+
+## **QUESTION 2**
+
+### **part a**
+ **HP as a function of Weight**
+```{r}
+cars <- mtcars
+
+cars %>% 
+ggplot(mapping = aes(x = wt, y = hp, colour = cyl)) +
+  geom_point(size = 2) + 
+    scale_color_gradient(low = "steelblue", high = "firebrick1")
+```
+
+My initial observation on the above graph is that the two are not strongly related. As x increases y increase to about x = 3 there seems to be a relationship but after 3 the points become more scattered and more spread out. 
+
+ **Linear regression formula for hp ~ wt**
+```{r}
+lin_reg <- lm(hp ~ wt, cars)
+lin_reg
+```
+
+**R^2**
+```{r}
+summary(lin_reg)
+```
+
+**HP as a function of MPG**
+```{r}
+cars %>% 
+ggplot(mapping = aes(x = mpg, y = hp, colour = cyl)) +
+  geom_point() +
+  labs(title = "Scatter Plot of mtcars MPG and WT") + 
+  theme(plot.title = element_text(face = "bold", hjust = .5)) + 
+    scale_color_gradient(low = "steelblue", high = "firebrick1")
+```
+
+There seems to be a stronger correlation between hp ~ mpg due to as x increases y decreases, generally. 
+
+```{r}
+lin_reg <- lm(hp ~ mpg, cars)
+lin_reg
+```
+
+
+```{r}
+summary(lin_reg)
+```
+
+The answer is that MPG is a better predictor for HP than weight. 60% of the variance in the HP can be explained by the MPG of a car. Comparatively, only 43% of the variance in HP can be explained by the weight of a car.
+
+### **part b**
+```{r}
+lin_reg <- lm(hp ~ cyl + mpg, cars)
+lin_reg
+```
+y = 23.979x1 - 2.775x2 + 54.067
+
+```{r}
+summary(lin_reg)
+```
+
+71% of the variance in HP can be explained by the number of cylinders and mpg of a car. Adding cylinders as a variable increased the predictive power of this model by ~10%. I would say that is an improvement!
+
+```{r}
+23.979*4 - 2.775*22 + 54.067
+```
+A car with 4 cylinders and 22 MPG will have about 89 HP.
+
+## **QUESTION 3**
+
+```{r}
+library(mlbench)
+data(BostonHousing)
+```
+
+```{r}
+BostonHousing %>% 
+  select(medv, crim, zn, ptratio, chas) -> bos_median
+
+lm(medv ~., data = bos_median) -> bos_reg
+bos_reg
+```
+
+```{r}
+summary(bos_reg)
+```
+
+I would say probably not based on the r-squared for the model, which only 36% of the variance in the median house price is accounted for by the crime, zoning, teacher-student ratio, and the Chas River. All of the variables are statistically significant at significant levels at 0!
+
+** part b.I**
+
+The house that bounds the Chas River would be $4,580 more expensive than the house that does not bound the Chas River.
+
+** part b.II**
+
+```{r}
+-1.4937*15
+-1.4937*18
+
+-1.4937*15 - -1.4937*18
+
+```
+
+The house that resides in the neighborhood where the stud/teacher ratio is lower (15:1) would be 4.48 (thousand dollars) more expensive than the one that has 18:1 student/teacher. 
+
+**part c**
+```{r}
+summary(lm(medv ~., data = bos_median))
+```
+
+Crime, zone, teacher/student rati, and chas river are statiscally significant at a significance level at 0 (***).
+
+```{r}
+anova(lm(medv ~., data = bos_median))
+```
+
+The order of importance of these variables is as follow (most importance to least): 
+    1) Crime rate  
+    2) Student:Teacher 
+    3) Zone
+    4) Chas River

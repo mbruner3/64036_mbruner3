@@ -131,9 +131,9 @@ colMeans(is.na(Online_Retail))
 # Number 8
 ```{r}
 Online_Retail %>% 
+  filter(is.na(CustomerID)) %>% 
   group_by(Country) %>% 
   summarise(CustomerID) %>% 
-  filter(is.na(CustomerID)) %>% 
   tally(sort = TRUE) # Total "NA" by country.
 ```
 # Number 9

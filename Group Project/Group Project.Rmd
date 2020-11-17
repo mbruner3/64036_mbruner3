@@ -1,0 +1,10 @@
+---
+title: "Group Project"
+author: "Mark Bruner"
+date: "11/16/2020"
+output: html_document
+---
+```{r}
+rm(ls())
+```
+
