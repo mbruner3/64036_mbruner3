@@ -1,10 +1,314 @@
 ---
 title: "Group Project"
-author: "Mark Bruner"
+author: "Khushboo Yadav, Rahkee Moolchandani, Mayank Pugalia, Mark Bruner"
 date: "11/16/2020"
 output: html_document
 ---
 ```{r}
-rm(ls())
+rm(list=ls())
 ```
+
+
+```{r}
+library(fastDummies)
+library(modeldata)
+library(tidyverse)
+library(keras)
+library(corrr)
+library(yardstick)
+library(lime)
+library(tidyquant)
+library(rsample)
+library(recipes)
+```
+
+```{r}
+data(mlc_churn)
+customers <- mlc_churn
+
+load("Customers_To_Predict.RData")
+test <- data.frame(Custmers_to_predict)
+```
+
+
+```{r}
+head(customers)
+tail(customers)
+```
+
+
+```{r}
+set.seed(15)
+train_valid_split <- initial_split(customers[, -1], prop = 0.6)
+train_valid_split
+
+train_tbl <- training(train_valid_split)
+valid_tbl <- testing(train_valid_split)
+```
+
+```{r}
+cust_obj <- recipe(churn~., data = train_tbl) %>%
+  step_dummy(all_nominal(), -all_outcomes()) %>% 
+  step_center(all_predictors(), -all_outcomes()) %>% 
+  step_scale(all_predictors(), -all_outcomes()) %>% 
+  prep(data = train_tbl)
+  
+cust_obj
+```
+
+
+```{r}
+x_train_tbl <- bake(cust_obj, new_data = train_tbl) %>%  select(-churn)
+x_valid_tbl <- bake(cust_obj, new_data = valid_tbl) %>%  select(-churn)
+
+glimpse(x_train_tbl)
+```
+
+```{r}
+y_training_vec <- ifelse(pull(train_tbl, churn) == "yes", 1, 0)
+y_valid_vec <- ifelse(pull(valid_tbl, churn) == "yes", 1, 0)
+```
+
+```{r}
+model_keras <- keras_model_sequential()
+
+model_keras %>% 
+  
+  # First hidden layer
+  layer_dense(
+    units              = 16, 
+    kernel_initializer = "uniform", 
+    activation         = "relu", 
+    input_shape        = ncol(x_train_tbl)) %>% 
+  
+  # Dropout to prevent overfitting
+  layer_dropout(rate = 0.1) %>%
+  
+  # Second hidden layer
+  layer_dense(
+    units              = 16, 
+    kernel_initializer = "uniform", 
+    activation         = "relu") %>% 
+  
+  # Dropout to prevent overfitting
+  layer_dropout(rate = 0.1) %>%
+  
+  # Output layer
+  layer_dense(
+    units              = 1, 
+    kernel_initializer = "uniform", 
+    activation         = "sigmoid") %>% 
+  
+  # Compile ANN
+  compile(
+    optimizer = 'adam',
+    loss      = 'binary_crossentropy',
+    metrics   = c('accuracy')
+  )
+
+model_keras
+```
+
+```{r}
+history <- fit(
+  object           = model_keras, 
+  x                = as.matrix(x_train_tbl), 
+  y                = y_training_vec,
+  batch_size       = 150, 
+  epochs           = 50,
+  validation_split = 0.40
+)
+```
+
+```{r}
+print(history)
+plot(history)
+```
+
+```{r}
+yhat_keras_class_vec <- predict_classes(object = model_keras, x = as.matrix(x_valid_tbl)) %>%
+    as.vector()
+
+# Predicted Class Probability
+yhat_keras_prob_vec  <- predict_proba(object = model_keras, x = as.matrix(x_valid_tbl)) %>%
+    as.vector()
+
+estimates_keras_tbl <- tibble(
+  truth      = as.factor(y_valid_vec) %>% fct_recode(yes = "1", no = "0"),
+  estimate   = as.factor(yhat_keras_class_vec) %>% fct_recode(yes = "1", no = "0"),
+  class_prob = yhat_keras_prob_vec
+)
+
+estimates_keras_tbl
+
+options(yardstick.event_first = FALSE)
+
+estimates_keras_tbl %>% conf_mat(truth, estimate)
+
+estimates_keras_tbl %>% metrics(truth, estimate)
+
+estimates_keras_tbl %>% roc_auc(truth, class_prob)
+
+estimates_keras_tbl %>% precision(truth, estimate)
+estimates_keras_tbl %>% recall(truth, estimate)
+estimates_keras_tbl %>% f_meas(truth, estimate, beta = 1)
+```
+
+
+```{r}
+class(model_keras)
+model_keras
+```
+
+```{r}
+model_type.keras.engine.sequential.Sequential <- function(x, ...) {
+  "classification"
+}
+```
+
+
+```{r}
+predict_model.keras.engine.sequential.Sequential <- function(x, newdata, type, ...) {
+  pred <- predict_proba(object = x, x = as.matrix(newdata))
+  data.frame(Yes = pred, No = 1 - pred)
+}
+```
+
+```{r}
+explainer <- lime::lime(
+  x              = x_train_tbl, 
+  model          = model_keras, 
+  bin_continuous = FALSE
+)
+
+explanation <- lime::explain(
+  x_valid_tbl[1:10, ], 
+  explainer    = explainer, 
+  n_labels     = 1, 
+  n_features   = 4,
+  kernel_width = 0.5
+)
+
+plot_features(explanation) +
+  labs(title = "LIME Feature Importance Visualization",
+       subtitle = "Hold Out (Test) Set, First 10 Cases Shown")
+
+plot_explanations(explanation) +
+    labs(title = "LIME Feature Importance Heatmap",
+         subtitle = "Hold Out (Test) Set, First 10 Cases Shown")
+
+# Feature correlations to Churn
+corrr_analysis <- x_train_tbl %>%
+  mutate(Churn = y_training_vec) %>%
+  correlate() %>%
+  focus(Churn) %>%
+  rename(feature = rowname) %>%
+  arrange(abs(Churn)) %>%
+  mutate(feature = as_factor(feature)) 
+corrr_analysis
+```
+
+
+```{r}
+corrr_analysis %>%
+  ggplot(aes(x = Churn, y = fct_reorder(feature, desc(Churn)))) +
+  geom_point() +
+  # Positive Correlations - Contribute to churn
+  geom_segment(aes(xend = 0, yend = feature), 
+               color = palette_light()[[2]], 
+               data = corrr_analysis %>% filter(Churn > 0)) +
+  geom_point(color = palette_light()[[2]], 
+             data = corrr_analysis %>% filter(Churn > 0)) +
+  # Negative Correlations - Prevent churn
+  geom_segment(aes(xend = 0, yend = feature), 
+               color = palette_light()[[1]], 
+               data = corrr_analysis %>% filter(Churn < 0)) +
+  geom_point(color = palette_light()[[1]], 
+             data = corrr_analysis %>% filter(Churn < 0)) +
+  # Vertical lines
+  geom_vline(xintercept = 0, color = palette_light()[[5]], size = 1, linetype = 2) +
+  geom_vline(xintercept = -0.25, color = palette_light()[[5]], size = 1, linetype = 2) +
+  geom_vline(xintercept = 0.25, color = palette_light()[[5]], size = 1, linetype = 2) +
+  # Aesthetics
+  theme_tq() +
+  labs(title = "Churn Correlation Analysis",
+       subtitle = paste("Positive Correlations (contribute to churn),",
+                        "Negative Correlations (prevent churn)"),
+       y = "Feature Importance")
+```
+
+
+```{r}
+customers %>% 
+  group_by(intl_plan_yes) %>% 
+  count(churned) %>% 
+  mutate("rate" = n/sum(n)) -> international_churn
+
+international_churn
+```
+
+42% of those who had an international plan churned.
+
+```{r}
+customers %>% 
+  group_by(account_length) %>% 
+  count(churned) %>% 
+  mutate("rate" = n/sum(n)) %>% 
+  filter(churned == 1) %>% 
+  arrange(desc(account_length)) -> length 
+
+length %>%   
+ggplot(mapping = aes(x = account_length, y = n, color = churned)) +
+  geom_line()
+
+customers %>% 
+  group_by(account_length) %>% 
+  count(churned) %>% 
+  filter(churned == 1) %>% 
+  ungroup() %>% 
+  group_by(churned) %>% 
+  filter(account_length >= 75 & account_length <= 125) %>% 
+  summarise(sum(n))
+```
+
+It seems that almost 50% of customers that will churn do so between 75 to 125 months.
+
+```{r}
+customers %>% 
+  group_by(total_intl_charge) %>% 
+  count(churned) %>% 
+  mutate("rate" = n/sum(n)) %>% 
+  filter(churned == 1) %>% 
+  arrange(desc(total_intl_charge)) -> intl_charge
+
+customers %>% 
+  group_by(total_intl_charge) %>% 
+  count(churned) %>% 
+  mutate("rate" = n/sum(n)) %>% 
+  filter(churned == 1) %>% 
+  ungroup() %>% 
+  group_by(churned) %>% 
+  filter(total_intl_charge >= 3.5 & total_intl_charge <= 4.5) %>% 
+  summarise(sum(n))
+
+customers %>% 
+  group_by(total_intl_charge) %>% 
+  count(churned) %>% 
+  mutate("rate" = n/sum(n)) %>% 
+  filter(churned == 1) %>% 
+  ungroup() %>% 
+  group_by(churned) %>% 
+  filter(total_intl_charge >= 2 & total_intl_charge <= 4) %>% 
+  summarise(sum(n))
+
+intl_charge %>% 
+ggplot(mapping = aes(x = total_intl_charge, y = rate, color = churned)) +
+  geom_line()
+
+intl_charge %>%   
+  ggplot(mapping = aes(x = total_intl_charge, y = n, color = churned)) +
+  geom_line()
+```
+
+Most of the customers churned when international charges are between 2 and 4 with 592 or 84% of all the customers who churned.
 
